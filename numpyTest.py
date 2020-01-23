@@ -39,3 +39,7 @@ print(arr)
 
 filters = np.random.randn(2,3,3,3)
 print(filters)
+
+a = np.random.randn(3,3)
+b = np.where(a>0,a,0)
+print(b) 
