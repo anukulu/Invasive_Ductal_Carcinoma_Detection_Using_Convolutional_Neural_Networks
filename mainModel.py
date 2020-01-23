@@ -86,9 +86,7 @@ cnn = CNN(0.01)
 testImage = Image.open("test_image.jpg")
 img = np.array(testImage)
 
-filters = np.array([[[[-1,0,1],[-1,0,1],[-1,0,1]], [[-1,-1,-1],[0,0,0],[1,1,1]], [[0,1,1],[-1,0,1],[-1,-1,0]]],
-					[[[-1,0,1],[-1,0,1],[-1,0,1]], [[-1,-1,-1],[0,0,0],[1,1,1]], [[0,1,1],[-1,0,1],[-1,-1,0]]],
-					[[[-1,0,1],[-1,0,1],[-1,0,1]], [[-1,-1,-1],[0,0,0],[1,1,1]], [[0,1,1],[-1,0,1],[-1,-1,0]]]])
+filters = np.random.randn(3,3,3,3)
 
 convoultion = cnn.Convolution3D(img, filters, 1, 1)
 print(convoultion.shape)
