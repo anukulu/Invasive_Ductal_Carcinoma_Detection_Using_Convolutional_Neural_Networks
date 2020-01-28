@@ -30,7 +30,7 @@ import matplotlib.pyplot as plt
 arr = np.array([[1,2],[3,4]])
 
 arr = np.pad(arr, (1,2), mode='constant', constant_values = 0) 
-print(arr)
+# print(arr)
 # result = [[0 0 0 0 0]
  # 			[0 1 2 0 0]
  # 			[0 3 4 0 0]
@@ -38,8 +38,24 @@ print(arr)
  # 			[0 0 0 0 0]]
 
 filters = np.random.randn(2,3,3,3)
-print(filters)
+# print(filters)
 
 a = np.random.randn(3,3)
 b = np.where(a>0,a,0)
-print(b) 
+# print(b) 
+
+filterss = np.array([[[[-1,0,1],[-1,0,1],[-1,0,1]], [[-1,-1,-1],[0,0,0],[1,1,1]], [[0,1,1],[-1,0,1],[-1,-1,0]]],
+					[[[-1,0,1],[-1,0,1],[-1,0,1]], [[-1,-1,-1],[0,0,0],[1,1,1]], [[0,1,1],[-1,0,1],[-1,-1,0]]],
+					[[[-1,0,1],[-1,0,1],[-1,0,1]], [[-1,-1,-1],[0,0,0],[1,1,1]], [[0,1,1],[-1,0,1],[-1,-1,0]]]])
+
+filterss = np.where(filterss < 0, 0, filterss)
+print(filterss)
+flattened = filterss.flatten()
+print(flattened.shape)
+print(len(filterss))
+
+a = (2,3,4)
+b = list(a)
+z = 1
+x = [z = z*i for i in a]
+print(x)
