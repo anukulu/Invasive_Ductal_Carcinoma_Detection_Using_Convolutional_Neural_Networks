@@ -6,11 +6,13 @@ import png
 # This is a CNN model (biases are still to be added during activation and batch normalization has yet to be implemented)
 
 class CNN:
-	def __init__(self, learningRate, image):
+	def __init__(self, learningRate, image, category):
 		self.learningRate = learningRate
 		self.maxPoolFilterSize = 2
 		self.maxPoolStride = 2
 		self.image = image
+		self.category = category
+		self.epsilon = 0.01
 
 		# declarations for layer 1
 		self.numberOfFiltersLayer1 = 32
@@ -45,6 +47,9 @@ class CNN:
 		self.fullyconnectedLayer2 = np.zeros((2,1))
 		self.softmaxFCLayer2 = np.zeros(self.fullyconnectedLayer2.shape)
 
+		# Loss
+		self.Loss = 0
+
 
 	def FindSize(self, n, p, f, s):
 		return (int(((n+ (2 * p)- f)/s) + 1))
@@ -72,6 +77,13 @@ class CNN:
 		self.fullyconnectedLayer2 = np.dot(self.weightsFCLayer2, self.activationFCLayer1)
 		self.softmaxFCLayer2 = self.Softmax(self.fullyconnectedLayer2)
 		print(self.softmaxFCLayer2)
+
+		# evaluating the loss for the model
+		if (self.softmaxFCLayer2[np.where(self.category == 1)] == 0):
+			self.Loss = -1 * np.log(self.epsilon + self.softmaxFCLayer2[np.where(self.category == 1)])
+		else:
+			self.loss = -1 * np.log(self.softmaxFCLayer2[np.where(self.category == 1)])
+		print(self.Loss)
 
 	def Softmax(self, array):
 
@@ -111,8 +123,8 @@ class CNN:
 			# padding each layer and assigning to the new image
 			image[:,:,i] = np.pad(originalImage[:,:,i], (pad,pad), mode='constant', constant_values = 0)
 
-		outputHeight = int(((originalImage.shape[0] - fltr.shape[1] + 2 * pad) / stride) + 1) 
-		outputWidth = int(((originalImage.shape[1] - fltr.shape[2] + 2 * pad)/ stride) + 1)
+		outputHeight = self.FindSize(originalImage.shape[0], pad, fltr.shape[1], stride) 
+		outputWidth = self.FindSize(originalImage.shape[1], pad, fltr.shape[2], stride)
 		outputDepth = fltr.shape[0]
 
 		convolutedVolume = np.zeros((outputHeight, outputWidth, outputDepth))
@@ -164,27 +176,20 @@ class CNN:
 		temp = np.where(volume>255, 255, volume)
 		return temp
 
+	def ShowLayer3D(self, volume, indexOfSlice):
+		plt.imshow(volume[:, :, indexOfSlice])
+		plt.show()
+
+	def ShowLayer4D(Self, volume, indexOf3DVolume, indexOfSlice):
+		plt.imshow(volume[indexOf3DVolume, :, :, indexOfSlice])
+		plt.show()
 
 testImage = Image.open("test_image.png")
 img = np.array(testImage)
+classify = np.array([1,0])
 
-cnn = CNN(0.01, img)
+cnn = CNN(0.01, img, classify)
 cnn.ForwardPass()
+cnn.ShowLayer3D(cnn.convolutionLayer1, 2)
 
 
-# filters = np.random.randn(3,3,3,3)
-
-# convoultion = cnn.Convolution3D(img, filters, 1, 1)
-# print(convoultion.shape)
-# plt.imshow(convoultion)
-# plt.show()
-
-# activate = cnn.reluActivation(convoultion)
-# print(activate.shape)
-# plot2 = plt.imshow(activate)
-# plt.show()
-
-# maxpool = cnn.MaxPool(activate, 2)
-# print(maxpool.shape)
-# plot = plt.imshow(maxpool)
-# plt.show()
