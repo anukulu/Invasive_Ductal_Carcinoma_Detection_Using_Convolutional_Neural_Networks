@@ -45,6 +45,7 @@ class CNN:
 		self.fullyconnectedLayer2 = np.zeros((2,1))
 		self.softmaxFCLayer2 = np.zeros(self.fullyconnectedLayer2.shape)
 
+
 	def FindSize(self, n, p, f, s):
 		return (int(((n+ (2 * p)- f)/s) + 1))
 
@@ -70,6 +71,7 @@ class CNN:
 		# for fully connected layer 2 (also apply softmax in this layer)
 		self.fullyconnectedLayer2 = np.dot(self.weightsFCLayer2, self.activationFCLayer1)
 		self.softmaxFCLayer2 = self.Softmax(self.fullyconnectedLayer2)
+		print(self.softmaxFCLayer2)
 
 	def Softmax(self, array):
 
