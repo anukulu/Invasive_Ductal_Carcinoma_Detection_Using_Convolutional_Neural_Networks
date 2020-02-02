@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import png
 
-# This is a CNN model (biases are still to be added during activation and batch normalization has yet to be implemented)
+# This is a CNN model (only batch normalization has yet to be implemented)
 
 class CNN:
 	def __init__(self, learningRate, image, category):
@@ -21,6 +21,8 @@ class CNN:
 		self.filtersLayer1 = np.random.randn(self.numberOfFiltersLayer1,self.filterSizeLayer1,self.filterSizeLayer1,self.filterDepthLayer1)
 		self.convoultionSizeLayer1 = self.FindSize(self.image.shape[0],1,self.filterSizeLayer1,2)
 		self.convolutionLayer1 = np.zeros((self.convoultionSizeLayer1,self.convoultionSizeLayer1,self.numberOfFiltersLayer1))
+		self.biasesLayer1 = np.random.randn(*(self.convolutionLayer1.shape))
+
 		self.reluLayer1 = np.zeros(self.convolutionLayer1.shape)
 		self.maxpooledSizeLayer1 = self.FindSize(self.convolutionLayer1.shape[0],0,self.maxPoolFilterSize,self.maxPoolStride)
 		self.maxpooledLayer1 = np.zeros((self.maxpooledSizeLayer1,self.maxpooledSizeLayer1,self.numberOfFiltersLayer1))
@@ -32,6 +34,8 @@ class CNN:
 		self.filtersLayer2 = np.random.randn(self.numberOfFiltersLayer2,self.filterSizeLayer2,self.filterSizeLayer2,self.filterDepthLayer2)
 		self.convoultionSizeLayer2 = self.FindSize(self.maxpooledLayer1.shape[0],1,self.filterSizeLayer2,1)
 		self.convolutionLayer2 = np.zeros((self.convoultionSizeLayer2,self.convoultionSizeLayer2,self.numberOfFiltersLayer2))
+		self.biasesLayer2 = np.random.randn(*(self.convolutionLayer2.shape))
+
 		self.reluLayer2 = np.zeros(self.convolutionLayer2.shape)
 		self.maxpooledSizeLayer2 = self.FindSize(self.convolutionLayer2.shape[0],0,self.maxPoolFilterSize,self.maxPoolStride)
 		self.maxpooledLayer2 = np.zeros((self.maxpooledSizeLayer2,self.maxpooledSizeLayer2,self.numberOfFiltersLayer2))
@@ -40,11 +44,14 @@ class CNN:
 		self.heightOfFlattenedLayer = np.prod(list(self.maxpooledLayer2.shape))
 		self.weightsFCLayer1 = np.random.randn(128, self.heightOfFlattenedLayer)
 		self.fullyconnectedLayer1 = np.zeros((128,1))
+		self.biasesFCLayer1 = np.random.randn(*(self.fullyconnectedLayer1.shape))
+
 		self.activationFCLayer1 = np.zeros(self.fullyconnectedLayer1.shape)
 
 		# declarations for fully connected layer 2
 		self.weightsFCLayer2 = np.random.randn(2,128)
 		self.fullyconnectedLayer2 = np.zeros((2,1))
+		self.biasesFCLayer2 = np.random.randn(*(self.fullyconnectedLayer2.shape))
 		self.softmaxFCLayer2 = np.zeros(self.fullyconnectedLayer2.shape)
 
 		# Loss
@@ -57,24 +64,29 @@ class CNN:
 	def ForwardPass(self):
 
 		# for layer 1
-		self.convolutionLayer1 = self.LimitingPixels(self.Convolution3D(self.image, self.filtersLayer1, 1, 2))
+		self.convolutionLayer1 = self.LimitingPixels(np.add(self.Convolution3D(self.image, self.filtersLayer1, 1, 2), self.biasesLayer1))
 		self.reluLayer1 = self.LimitingPixels(self.ReluActivation(self.convolutionLayer1))
 		self.maxpooledLayer1 = self.MaxPool(self.reluLayer1, self.maxPoolStride)
 
+
 		# for layer 2
-		self.convolutionLayer2 = self.LimitingPixels(self.Convolution3D(self.maxpooledLayer1, self.filtersLayer2, 1, 1))
+		self.convolutionLayer2 = self.LimitingPixels(np.add(self.Convolution3D(self.maxpooledLayer1, self.filtersLayer2, 1, 1) , self.biasesLayer2))
 		self.reluLayer2 = self.LimitingPixels(self.ReluActivation(self.convolutionLayer2))
 		self.maxpooledLayer2 = self.MaxPool(self.reluLayer2, self.maxPoolStride)
 
 		# for flattening the last convoluted volume
 		self.flattenedLayer = self.maxpooledLayer2.flatten()
+		
+		# ok upto here
 
 		# for fully connected layer 1 
-		self.fullyconnectedLayer1 = np.dot(self.weightsFCLayer1, self.flattenedLayer)
+		z = np.dot(self.weightsFCLayer1, self.flattenedLayer)
+		o = np.reshape(z, (z.shape[0],1))
+		self.fullyconnectedLayer1 = o + self.biasesFCLayer1
 		self.activationFCLayer1 = self.ReluActivation(self.fullyconnectedLayer1)
 
 		# for fully connected layer 2 (also apply softmax in this layer)
-		self.fullyconnectedLayer2 = np.dot(self.weightsFCLayer2, self.activationFCLayer1)
+		self.fullyconnectedLayer2 = np.add(np.dot(self.weightsFCLayer2, self.activationFCLayer1)  , self.biasesFCLayer2)
 		self.softmaxFCLayer2 = self.Softmax(self.fullyconnectedLayer2)
 		print(self.softmaxFCLayer2)
 
@@ -184,11 +196,16 @@ class CNN:
 		plt.imshow(volume[indexOf3DVolume, :, :, indexOfSlice])
 		plt.show()
 
+	def SqaureAVolume(self, volume):
+		temp = np.multiply(volume, volume)
+		return temp
+
 testImage = Image.open("test_image.png")
 img = np.array(testImage)
 classify = np.array([1,0])
 
-cnn = CNN(0.01, img, classify)
+# classify is a dummy one hot encoded vector for the different classes of the output and only used for testing (temporary)
+cnn = CNN(0.01, img, classify) 
 cnn.ForwardPass()
 cnn.ShowLayer3D(cnn.convolutionLayer1, 2)
 

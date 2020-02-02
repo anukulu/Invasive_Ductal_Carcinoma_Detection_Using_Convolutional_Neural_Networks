@@ -49,13 +49,18 @@ filterss = np.array([[[[-1,0,1],[-1,0,1],[-1,0,1]], [[-1,-1,-1],[0,0,0],[1,1,1]]
 					[[[-1,0,1],[-1,0,1],[-1,0,1]], [[-1,-1,-1],[0,0,0],[1,1,1]], [[0,1,1],[-1,0,1],[-1,-1,0]]]])
 
 filterss = np.where(filterss < 0, 0, filterss)
-print(filterss)
+# print(filterss)
 flattened = filterss.flatten()
-print(flattened.shape)
-print(len(filterss))
+# print(len(filterss))
 
-a = (2,3,4)
-b = list(a)
-z = 1
-x = [z = z*i for i in a]
-print(x)
+arr = np.array([1,2,3,4,4,5])
+arr1 = np.reshape(arr, (6,1))
+
+
+def mult(volume):
+	temp = np.multiply(volume, volume)
+	return temp
+
+a = mult(np.array([ [[1,2],[3,4],[5,6]], [[2,3],[5,6],[7,5]] ]))
+print(a)
+
