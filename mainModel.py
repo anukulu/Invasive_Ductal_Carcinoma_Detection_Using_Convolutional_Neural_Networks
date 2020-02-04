@@ -6,12 +6,12 @@ import png
 # This is a CNN model (only batch normalization has yet to be implemented)
 
 class CNN:
-	def __init__(self, learningRate, image, category):
+	def __init__(self, learningRate, regularizationFactor):
 		self.learningRate = learningRate
+		self.regularizationFactor = regularizationFactor
 		self.maxPoolFilterSize = 2
 		self.maxPoolStride = 2
-		self.image = image
-		self.category = category
+		self.imageSize = 50
 		self.epsilon = 0.01
 
 		# declarations for layer 1
@@ -19,7 +19,7 @@ class CNN:
 		self.filterSizeLayer1 = 3
 		self.filterDepthLayer1 = 3
 		self.filtersLayer1 = np.random.randn(self.numberOfFiltersLayer1,self.filterSizeLayer1,self.filterSizeLayer1,self.filterDepthLayer1)
-		self.convoultionSizeLayer1 = self.FindSize(self.image.shape[0],1,self.filterSizeLayer1,2)
+		self.convoultionSizeLayer1 = self.FindSize(self.imageSize,1,self.filterSizeLayer1,2)
 		self.convolutionLayer1 = np.zeros((self.convoultionSizeLayer1,self.convoultionSizeLayer1,self.numberOfFiltersLayer1))
 		self.biasesLayer1 = np.random.randn(*(self.convolutionLayer1.shape))
 
@@ -57,6 +57,9 @@ class CNN:
 		# Loss
 		self.Loss = 0
 
+	def SetImage(self, image, category):
+		self.image = image
+		self.category = category
 
 	def FindSize(self, n, p, f, s):
 		return (int(((n+ (2 * p)- f)/s) + 1))
@@ -76,6 +79,7 @@ class CNN:
 
 		# for flattening the last convoluted volume
 		self.flattenedLayer = self.maxpooledLayer2.flatten()
+		print(self.flattenedLayer.shape)
 		
 		# ok upto here
 
@@ -90,12 +94,35 @@ class CNN:
 		self.softmaxFCLayer2 = self.Softmax(self.fullyconnectedLayer2)
 		print(self.softmaxFCLayer2)
 
+		# summing all the square of the weights for L2 regularization
+
+		squareSumWeightsLayer1 = np.sum(self.mult(self.filtersLayer1))
+		squareSumWeightsLayer2 = np.sum(self.mult(self.filtersLayer2))
+		squareSumWeightsFCLayer1 = np.sum(self.mult(self.weightsFCLayer1))
+		squareSumWeightsFCLayer2 = np.sum(self.mult(self.weightsFCLayer2))
+
+		L2Regularization = squareSumWeightsLayer1 + squareSumWeightsLayer2 + squareSumWeightsFCLayer1 + squareSumWeightsFCLayer2
+		print(L2Regularization)
+
 		# evaluating the loss for the model
 		if (self.softmaxFCLayer2[np.where(self.category == 1)] == 0):
-			self.Loss = -1 * np.log(self.epsilon + self.softmaxFCLayer2[np.where(self.category == 1)])
+			self.Loss = 0.5 * (-1 * np.log(self.epsilon + self.softmaxFCLayer2[np.where(self.category == 1)][0][0]) + (self.regularizationFactor * L2Regularization) )
 		else:
-			self.loss = -1 * np.log(self.softmaxFCLayer2[np.where(self.category == 1)])
+			self.Loss = 0.5 * (-1 * np.log(self.softmaxFCLayer2[np.where(self.category == 1)][0][0]) + (self.regularizationFactor * L2Regularization) )
 		print(self.Loss)
+
+		return self.Loss
+
+	def BackwardPass(self):
+		
+		# defining the gradients for each layer starting from the end
+		
+
+		pass
+
+	def mult(self, volume):
+		temp = np.multiply(volume, volume)
+		return temp
 
 	def Softmax(self, array):
 
@@ -188,25 +215,31 @@ class CNN:
 		temp = np.where(volume>255, 255, volume)
 		return temp
 
-	def ShowLayer3D(self, volume, indexOfSlice):
-		plt.imshow(volume[:, :, indexOfSlice])
-		plt.show()
+	def ShowLayer3D(self, volume, indexOfSlice, typeOfShow):
 
-	def ShowLayer4D(Self, volume, indexOf3DVolume, indexOfSlice):
-		plt.imshow(volume[indexOf3DVolume, :, :, indexOfSlice])
-		plt.show()
+		if(typeOfShow == 1):
+			plt.imshow(volume[:, :,indexOfSlice])
+			plt.show()
+		else:
+			print(volume[:,:,indexOfSlice])
 
-	def SqaureAVolume(self, volume):
-		temp = np.multiply(volume, volume)
-		return temp
+	def ShowLayer4D(Self, volume, indexOf3DVolume, indexOfSlice, typeOfShow):
+
+		if(typeOfShow == 1):
+			plt.imshow(volume[indexOf3DVolume, :, :, indexOfSlice])
+			plt.show()
+		else:
+			print(volume[indexOf3DVolume, :, :, indexOfSlice])
+
 
 testImage = Image.open("test_image.png")
 img = np.array(testImage)
 classify = np.array([1,0])
 
 # classify is a dummy one hot encoded vector for the different classes of the output and only used for testing (temporary)
-cnn = CNN(0.01, img, classify) 
+cnn = CNN(0.01, 0.00001)
+cnn.SetImage(img, classify) 
 cnn.ForwardPass()
-cnn.ShowLayer3D(cnn.convolutionLayer1, 2)
+cnn.ShowLayer4D(cnn.filtersLayer1, 1, 1, 1)
 
 

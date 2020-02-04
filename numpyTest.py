@@ -44,9 +44,17 @@ a = np.random.randn(3,3)
 b = np.where(a>0,a,0)
 # print(b) 
 
+def mult(volume):
+	temp = np.multiply(volume, volume)
+	return temp
+
+
 filterss = np.array([[[[-1,0,1],[-1,0,1],[-1,0,1]], [[-1,-1,-1],[0,0,0],[1,1,1]], [[0,1,1],[-1,0,1],[-1,-1,0]]],
 					[[[-1,0,1],[-1,0,1],[-1,0,1]], [[-1,-1,-1],[0,0,0],[1,1,1]], [[0,1,1],[-1,0,1],[-1,-1,0]]],
 					[[[-1,0,1],[-1,0,1],[-1,0,1]], [[-1,-1,-1],[0,0,0],[1,1,1]], [[0,1,1],[-1,0,1],[-1,-1,0]]]])
+
+filterss = mult(filterss)
+# print(filterss)
 
 filterss = np.where(filterss < 0, 0, filterss)
 # print(filterss)
@@ -57,10 +65,26 @@ arr = np.array([1,2,3,4,4,5])
 arr1 = np.reshape(arr, (6,1))
 
 
-def mult(volume):
-	temp = np.multiply(volume, volume)
-	return temp
 
 a = mult(np.array([ [[1,2],[3,4],[5,6]], [[2,3],[5,6],[7,5]] ]))
-print(a)
 
+
+# print(a)
+
+b = np.random.randint(0,20, size=(3,3,3))
+print(b)
+
+c = np.flip(b, axis=(1,2))
+
+print(c)
+add = np.sum(filterss)
+print(add)
+
+b = np.random.randn(2,2,3)
+
+print(b)
+
+testImage = Image.open("test_image.png")
+img = np.array(testImage)
+plt.imshow(img[0,:,:])
+plt.show()
