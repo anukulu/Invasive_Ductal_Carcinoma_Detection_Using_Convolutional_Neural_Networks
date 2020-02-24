@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import png
 
-# This is a CNN model (only batch normalization has yet to be implemented)
+# This is a CNN model (only batch normalization is yet to be implemented)
 
 class CNN:
 	def __init__(self, learningRate, regularizationFactor):
@@ -211,13 +211,13 @@ class CNN:
 			a = volume[:,:,x]
 			# print(a.shape)
 			column = np.zeros((1, a.shape[0]))
-			for i in range(2* a.shape[1] - 1):
+			for i in range(sizeAfterDilation):
 				if (i % 2 != 0):
 					a = np.hstack((a[:,:i], np.transpose(column), a[:,i:]))	
 			a = np.transpose(a)
 			# print(a.shape)
 			row = np.zeros((1, a.shape[0]))
-			for i in range(2* a.shape[1] - 1):
+			for i in range(sizeAfterDilation):
 				if(i % 2 != 0):
 					a = np.hstack((a[:,:i], np.transpose(row), a[:,i:]))
 			a = np.transpose(a)
