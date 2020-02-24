@@ -12,7 +12,7 @@ class CNN:
 		self.maxPoolFilterSize = 2
 		self.maxPoolStride = 2
 		self.imageSize = 50
-		self.epsilon = 0.01
+		self.epsilon = 0.01	# threshold value added so that the result of the distribution is greater than zero
 
 		# declarations for layer 1
 		self.numberOfFiltersLayer1 = 32
@@ -79,7 +79,8 @@ class CNN:
 
 		# for flattening the last convoluted volume
 		self.flattenedLayer = self.maxpooledLayer2.flatten()
-		print(self.flattenedLayer.shape)
+		# print(self.flattenedLayer.shape)
+		self.flattenedLayer = np.reshape(self.flattenedLayer, (self.flattenedLayer.shape[0], 1))
 		
 		# ok upto here
 
@@ -91,21 +92,22 @@ class CNN:
 
 		# for fully connected layer 2 (also apply softmax in this layer)
 		self.fullyconnectedLayer2 = np.add(np.dot(self.weightsFCLayer2, self.activationFCLayer1)  , self.biasesFCLayer2)
+		# print(self.fullyconnectedLayer2)
 		self.softmaxFCLayer2 = self.Softmax(self.fullyconnectedLayer2)
-		print(self.softmaxFCLayer2)
+		# print(self.softmaxFCLayer2)
 
 		# summing all the square of the weights for L2 regularization
 
-		squareSumWeightsLayer1 = np.sum(self.mult(self.filtersLayer1))
-		squareSumWeightsLayer2 = np.sum(self.mult(self.filtersLayer2))
-		squareSumWeightsFCLayer1 = np.sum(self.mult(self.weightsFCLayer1))
-		squareSumWeightsFCLayer2 = np.sum(self.mult(self.weightsFCLayer2))
+		squareSumWeightsLayer1 = np.sum(self.Square(self.filtersLayer1))
+		squareSumWeightsLayer2 = np.sum(self.Square(self.filtersLayer2))
+		squareSumWeightsFCLayer1 = np.sum(self.Square(self.weightsFCLayer1))
+		squareSumWeightsFCLayer2 = np.sum(self.Square(self.weightsFCLayer2))
 
 		L2Regularization = squareSumWeightsLayer1 + squareSumWeightsLayer2 + squareSumWeightsFCLayer1 + squareSumWeightsFCLayer2
-		print(L2Regularization)
+		# print(L2Regularization)
 
 		# evaluating the loss for the model
-		if (self.softmaxFCLayer2[np.where(self.category == 1)] == 0):
+		if (self.softmaxFCLayer2[np.where(self.category == 1)][0][0] == 0):
 			self.Loss = 0.5 * (-1 * np.log(self.epsilon + self.softmaxFCLayer2[np.where(self.category == 1)][0][0]) + (self.regularizationFactor * L2Regularization) )
 		else:
 			self.Loss = 0.5 * (-1 * np.log(self.softmaxFCLayer2[np.where(self.category == 1)][0][0]) + (self.regularizationFactor * L2Regularization) )
@@ -116,17 +118,137 @@ class CNN:
 	def BackwardPass(self):
 		
 		# defining the gradients for each layer starting from the end
+
+		# gradient for output layer
+		threshold = 0.005
+		tempOutputG = np.where(self.softmaxFCLayer2 > threshold, self.softmaxFCLayer2, threshold)
+		tempOutputG = -1 / tempOutputG
+		self.outputG = np.multiply(tempOutputG, np.transpose(np.array([self.category])))
+		# print(self.outputG)
+
+		# gradient for weights connected to  output layer
+		self.weightsFCLayer2G = np.zeros(self.weightsFCLayer2.shape)
+		summMatrix = []
+		for i in range(self.weightsFCLayer2.shape[0]):
+			summ = 0
+			for j in range(self.outputG.shape[0]):
+				dij = 1 if i == j else 0
+				value = self.softmaxFCLayer2[j][0] * (dij - self.softmaxFCLayer2[i][0]) * self.outputG[j][0]
+				# print(value)
+				summ = summ + value
+			summMatrix.append(summ)
+		for x in range(self.weightsFCLayer2G.shape[0]):
+			self.weightsFCLayer2G[x,:] = summMatrix[x] * np.transpose(self.activationFCLayer1)
 		
+		# gradient for x in fully connected layer 1
+		self.activationFCLayer1G = np.zeros(self.activationFCLayer1.shape)
+		summMatrix = []
+		for i in range(self.activationFCLayer1G.shape[0]):
+			summ = 0
+			for j in range(self.outputG.shape[0]):
+				product = np.sum([self.softmaxFCLayer2[k][0] * self.weightsFCLayer2[k][i] for k in range(self.softmaxFCLayer2.shape[0])])
+				value = self.softmaxFCLayer2[j][0] * (self.weightsFCLayer2[j][i] - product) * self.outputG[j][0]
+				summ = summ + value
+			self.activationFCLayer1G[i, :] = [summ]
+		self.activationFCLayer1G = np.where(self.activationFCLayer1 > 0, self.activationFCLayer1G, 0)
 
-		pass
+		# gradient for weights in first fully connected layer
+		self.weightsFCLayer1G = np.zeros(self.weightsFCLayer1.shape)
+		for i in range(self.weightsFCLayer1.shape[0]):
+			self.weightsFCLayer1G[i, :] = self.activationFCLayer1G[i][0] * np.transpose(self.flattenedLayer)
 
-	def mult(self, volume):
+		# gradient for flattened layer 
+		self.flattenedLayerG = np.zeros(self.flattenedLayer.shape)
+		for i in range(self.flattenedLayerG.shape[0]):
+			self.flattenedLayerG[i, :] = [np.sum(np.array([self.weightsFCLayer1[k][i] * self.activationFCLayer1G[k][0] for k in range(self.weightsFCLayer1.shape[0])]))]
+
+		# gradient for second maxpooled volume
+		self.maxpooledLayer2G = np.zeros(self.maxpooledLayer2.shape)
+		self.maxpooledLayer2G = np.reshape(self.flattenedLayerG, self.maxpooledLayer2.shape)
+		
+		# gradient for second convoluted volume
+		self.reluLayer2G = self.InverseMaxpool(self.maxpooledLayer2G, self.reluLayer2, 2)
+		self.reluLayer2G = np.where(self.reluLayer2 > 0, self.reluLayer2G, 0)
+
+		# gradient for second layer filter
+		self.filtersLayer2G = np.zeros(self.filtersLayer2.shape)
+		for x in range(self.filtersLayer2.shape[0]):
+			for y in range(self.maxpooledLayer1.shape[2]):
+				paddedInput = np.pad(self.maxpooledLayer1[:,:,y], (1,1), mode='constant', constant_values = 0)
+				self.filtersLayer2G[x, :, :, y] = self.Convolution2D(self.reluLayer2G[:,:,x], paddedInput, 1, 1)
+
+		# gradient for first maxpooled volume
+		sizeOfGradient = (self.maxpooledLayer1.shape[0] + 2 , self.maxpooledLayer1.shape[1] + 2, self.maxpooledLayer1.shape[2])
+		self.maxpooledLayer1G = np.zeros(sizeOfGradient)
+		tempFilters = self.FlipVolume(self.filtersLayer2)
+		padSize = self.filtersLayer2.shape[1] - 1
+		paddedGradient = np.pad(self.reluLayer2G, (padSize, padSize), mode='constant', constant_values = 0)
+		for x in range(self.filtersLayer2.shape[0]):
+			for y in range(self.maxpooledLayer1.shape[2]):
+				self.maxpooledLayer1G[:,:,y] = self.Convolution2D(tempFilters[x, :,:, y], paddedGradient[:,:,x], 1, 1)
+		self.maxpooledLayer1G = self.RemovePadding(self.maxpooledLayer1G)
+
+		# gradient for first convoluted volume
+		self.reluLayer1G = self.InverseMaxpool(self.maxpooledLayer1G, self.reluLayer1, 2)
+		self.reluLayer1G = np.where(self.reluLayer1 > 0, self.reluLayer1G, 0)
+		self.reluLayer1G = self.Dilation(self.reluLayer1G, 2)
+		print(self.reluLayer1G.shape)
+
+		# gradient for first layer filter
+		self.filtersLayer1G = np.zeros(self.filtersLayer1.shape)
+		for x in range(self.filtersLayer1.shape[0]):
+			for y in range(self.image.shape[2]):
+				paddedInput = np.pad(self.image[:,:,y], (1,1), mode='constant', constant_values = 0)
+				self.filtersLayer1G[x, :, :, y] = self.Convolution2D(self.reluLayer1G[:,:,x], paddedInput, 1, 1)
+		print(self.filtersLayer1G)
+
+	def Dilation(self,volume, dilation):
+		sizeAfterDilation = volume.shape[0] + ((volume.shape[0] - 1) * (dilation - 1))
+		# print(sizeAfterDilation)
+		tempVolume = np.zeros((sizeAfterDilation, sizeAfterDilation, volume.shape[2]))
+
+		for x in range(volume.shape[2]):
+			a = volume[:,:,x]
+			# print(a.shape)
+			column = np.zeros((1, a.shape[0]))
+			for i in range(2* a.shape[1] - 1):
+				if (i % 2 != 0):
+					a = np.hstack((a[:,:i], np.transpose(column), a[:,i:]))	
+			a = np.transpose(a)
+			# print(a.shape)
+			row = np.zeros((1, a.shape[0]))
+			for i in range(2* a.shape[1] - 1):
+				if(i % 2 != 0):
+					a = np.hstack((a[:,:i], np.transpose(row), a[:,i:]))
+			a = np.transpose(a)
+			# print(a.shape)
+			tempVolume[:,:,x] = a
+		return tempVolume
+
+	def RemovePadding(self, volume):
+		tempVolume1 = np.zeros((volume.shape[0]-2, volume.shape[1], volume.shape[2]))
+		tempVolume2 = np.zeros((volume.shape[0]-2, volume.shape[1]-2, volume.shape[2]))
+		for i in range(volume.shape[2]):
+			tempVolume1[:,:,i] = np.delete(volume[:,:,i], [0, volume.shape[0]-1], axis=0)
+			tempVolume2[:,:,i] = np.delete(tempVolume1[:,:,i], [0, tempVolume1.shape[1]-1], axis=1)
+		return tempVolume2
+
+	def FlipVolume(self, volume):
+		tempvolume = np.zeros(volume.shape)
+		for x in range(volume.shape[0]):
+			for y in range(volume.shape[3]):
+				tempvolume[x,:,:,y] = np.flip(volume[x,:,:,y], (0,1))
+		return tempvolume
+
+	def Square(self, volume):
 		temp = np.multiply(volume, volume)
 		return temp
 
 	def Softmax(self, array):
 
-		temp = array - np.max(array)
+		constant = 0.9999 * array
+		temp = array - constant
+		# print(temp)
 		exponents = np.exp(temp)
 		sumOfExponents = np.sum(exponents)
 		exponents = exponents / sumOfExponents
@@ -191,9 +313,9 @@ class CNN:
 
 		for x in range(convolutedVolume.shape[2]):	# for each layer of the total volume
 			i = 0
-			for y in range(0, convolutedVolume.shape[0] - self.maxPoolFilterSize, stride):
+			for y in range(0, convolutedVolume.shape[0] - self.maxPoolFilterSize + 1, stride):
 				j = 0
-				for z in range(0, convolutedVolume.shape[1] - self.maxPoolFilterSize, stride):
+				for z in range(0, convolutedVolume.shape[1] - self.maxPoolFilterSize + 1, stride):
 					sliceOfVolume = convolutedVolume[:,:,x]
 					maxPool2D[i, j] = np.max(sliceOfVolume[y:y+ self.maxPoolFilterSize, z:z + self.maxPoolFilterSize])
 					j = j + 1
@@ -203,6 +325,24 @@ class CNN:
 			maxPooledVolume[:,:,x] = maxPool2D
 
 		return maxPooledVolume
+
+	def InverseMaxpool(self, gradientVolume, convolutedVolume, stride):
+		gradientForConvolutedVolume = np.zeros(convolutedVolume.shape)
+
+		for x in range(convolutedVolume.shape[2]):	# for each layer of the total volume
+			i = 0
+			for y in range(0, convolutedVolume.shape[0] - self.maxPoolFilterSize + 1, stride):
+				j = 0
+				for z in range(0, convolutedVolume.shape[1] - self.maxPoolFilterSize + 1, stride):
+					sliceOfVolume = convolutedVolume[:,:,x]
+					smallSlice = sliceOfVolume[y:y+ self.maxPoolFilterSize, z:z + self.maxPoolFilterSize]
+					relativePositionOfMax = np.where(smallSlice == np.max(smallSlice))
+					realPosition = np.array([relativePositionOfMax[0][0] + y, relativePositionOfMax[1][0] + z])
+					gradientForConvolutedVolume[realPosition[0], realPosition[1], x] = gradientVolume[i,j,x]
+					j = j + 1
+
+				i = i + 1
+		return gradientForConvolutedVolume
 
 	def ReluActivation(self, volumeData):
 		# r = np.zeros_like(volumeData) # making the same dimension tensor as the provided volume
@@ -233,13 +373,21 @@ class CNN:
 
 
 testImage = Image.open("test_image.png")
-img = np.array(testImage)
-classify = np.array([1,0])
+testImg = np.array(testImage) / 255.0
+img = np.zeros((testImg.shape[0]-1, testImg.shape[1]-1, testImg.shape[2]))
+classify = np.array([0,1])
+
+# creating a 49 * 49 * 3 image to feedin CNN
+for x in range(img.shape[2]):
+	temp = np.delete(testImg[:,:,x], 0, axis=0)
+	img[:,:,x] = np.delete(temp, 0, axis=1) 
+print(img.shape)
 
 # classify is a dummy one hot encoded vector for the different classes of the output and only used for testing (temporary)
 cnn = CNN(0.01, 0.00001)
 cnn.SetImage(img, classify) 
 cnn.ForwardPass()
-cnn.ShowLayer4D(cnn.filtersLayer1, 1, 1, 1)
-
+# cnn.ShowLayer4D(cnn.filtersLayer1, 1, 1, 1)
+# cnn.ShowLayer3D(cnn.convolutionLayer1, 25, 1)
+cnn .BackwardPass()
 
