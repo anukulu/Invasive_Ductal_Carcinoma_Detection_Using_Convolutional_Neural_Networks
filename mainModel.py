@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 import png
+import time
 
 # This is a CNN model (only batch normalization is yet to be implemented)
 
@@ -191,8 +192,9 @@ class CNN:
 		# gradient for first convoluted volume
 		self.reluLayer1G = self.InverseMaxpool(self.maxpooledLayer1G, self.reluLayer1, 2)
 		self.reluLayer1G = np.where(self.reluLayer1 > 0, self.reluLayer1G, 0)
+		self.tempReluLayer1G = self.reluLayer1G
 		self.reluLayer1G = self.Dilation(self.reluLayer1G, 2)
-		print(self.reluLayer1G.shape)
+		# print(self.reluLayer1G.shape)
 
 		# gradient for first layer filter
 		self.filtersLayer1G = np.zeros(self.filtersLayer1.shape)
@@ -200,7 +202,49 @@ class CNN:
 			for y in range(self.image.shape[2]):
 				paddedInput = np.pad(self.image[:,:,y], (1,1), mode='constant', constant_values = 0)
 				self.filtersLayer1G[x, :, :, y] = self.Convolution2D(self.reluLayer1G[:,:,x], paddedInput, 1, 1)
-		print(self.filtersLayer1G)
+		# print(self.filtersLayer1G)
+
+		# gradients of the biases
+
+		# gradient for bias of final output layer
+		self.biasesFCLayer2G = np.zeros(self.biasesFCLayer2.shape)
+		constantForBias = np.sum(np.exp(self.fullyconnectedLayer2 - 0.999 * self.fullyconnectedLayer2))
+		for  i in range(self.biasesFCLayer2.shape[0]):
+			temp = 0
+			for j in range(self.softmaxFCLayer2.shape[0]):
+				dij = 1 if i == j else 0
+				temp = ((dij - self.softmaxFCLayer2[j][0]) / constantForBias) * (self.outputG[j][0])
+			self.biasesFCLayer2G[i][0] = temp
+
+		# gradient for bias of FC layer 1
+		self.biasesFCLayer1G = np.zeros(self.biasesFCLayer1.shape)
+		self.biasesFCLayer1G = self.activationFCLayer1G
+
+		#gradient for convolution layer 2 bias
+		self.biasesLayer2G = np.zeros(self.biasesLayer2.shape)
+		self.biasesLayer2G = self.reluLayer2G
+
+		#gradient for convolution layer 1 bias
+		self.biasesLayer1G = np.zeros(self.biasesLayer1.shape)
+		self.biasesLayer1G = self.tempReluLayer1G
+
+	def GradientUpdate(self):
+
+		# filters and biases layer 1
+		self.filtersLayer1 = np.subtract(self.filtersLayer1, self.learningRate * self.filtersLayer1G)
+		self.biasesLayer1 = np.subtract(self.biasesLayer1, self.learningRate * self.biasesLayer1G)
+
+		# filters and biases layer 2
+		self.filtersLayer2 = np.subtract(self.filtersLayer2, self.learningRate * self.filtersLayer2G)
+		self.biasesLayer2 = np.subtract(self.biasesLayer2, self.learningRate * self.biasesLayer2G)
+
+		# weights and biases FC layer 1
+		self.weightsFCLayer1 = np.subtract(self.weightsFCLayer1, self.learningRate * self.weightsFCLayer1G)
+		self.biasesFCLayer1 = np.subtract(self.biasesFCLayer1, self.learningRate * self.biasesFCLayer1G)
+
+		# weights and biases FC layer 2
+		self.weightsFCLayer2 = np.subtract(self.weightsFCLayer2, self.learningRate * self.weightsFCLayer2G)
+		self.biasesFCLayer2 = np.subtract(self.biasesFCLayer2, self.learningRate * self.biasesFCLayer2G)
 
 	def Dilation(self,volume, dilation):
 		sizeAfterDilation = volume.shape[0] + ((volume.shape[0] - 1) * (dilation - 1))
@@ -372,6 +416,8 @@ class CNN:
 			print(volume[indexOf3DVolume, :, :, indexOfSlice])
 
 
+start = time.time()
+
 testImage = Image.open("test_image.png")
 testImg = np.array(testImage) / 255.0
 img = np.zeros((testImg.shape[0]-1, testImg.shape[1]-1, testImg.shape[2]))
@@ -384,10 +430,15 @@ for x in range(img.shape[2]):
 print(img.shape)
 
 # classify is a dummy one hot encoded vector for the different classes of the output and only used for testing (temporary)
-cnn = CNN(0.01, 0.00001)
+cnn = CNN(0.005, 0.00001) # learning rate and regularization factor 
 cnn.SetImage(img, classify) 
 cnn.ForwardPass()
 # cnn.ShowLayer4D(cnn.filtersLayer1, 1, 1, 1)
 # cnn.ShowLayer3D(cnn.convolutionLayer1, 25, 1)
 cnn .BackwardPass()
+cnn.GradientUpdate()
+
+end = time.time()
+difference = end - start
+print(difference)
 
