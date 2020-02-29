@@ -231,19 +231,19 @@ class CNN:
 	def GradientUpdate(self):
 
 		# filters and biases layer 1
-		self.filtersLayer1 = np.subtract(self.filtersLayer1, self.learningRate * self.filtersLayer1G)
+		self.filtersLayer1 = np.subtract(self.filtersLayer1, self.learningRate * np.add(self.filtersLayer1G, self.filtersLayer1))
 		self.biasesLayer1 = np.subtract(self.biasesLayer1, self.learningRate * self.biasesLayer1G)
 
 		# filters and biases layer 2
-		self.filtersLayer2 = np.subtract(self.filtersLayer2, self.learningRate * self.filtersLayer2G)
+		self.filtersLayer2 = np.subtract(self.filtersLayer2, self.learningRate * np.add(self.filtersLayer2G, self.filtersLayer2))
 		self.biasesLayer2 = np.subtract(self.biasesLayer2, self.learningRate * self.biasesLayer2G)
 
 		# weights and biases FC layer 1
-		self.weightsFCLayer1 = np.subtract(self.weightsFCLayer1, self.learningRate * self.weightsFCLayer1G)
+		self.weightsFCLayer1 = np.subtract(self.weightsFCLayer1, self.learningRate * np.add(self.weightsFCLayer1G, self.weightsFCLayer1))
 		self.biasesFCLayer1 = np.subtract(self.biasesFCLayer1, self.learningRate * self.biasesFCLayer1G)
 
 		# weights and biases FC layer 2
-		self.weightsFCLayer2 = np.subtract(self.weightsFCLayer2, self.learningRate * self.weightsFCLayer2G)
+		self.weightsFCLayer2 = np.subtract(self.weightsFCLayer2, self.learningRate * np.add(self.weightsFCLayer2G, self.weightsFCLayer2))
 		self.biasesFCLayer2 = np.subtract(self.biasesFCLayer2, self.learningRate * self.biasesFCLayer2G)
 
 	def Dilation(self,volume, dilation):
