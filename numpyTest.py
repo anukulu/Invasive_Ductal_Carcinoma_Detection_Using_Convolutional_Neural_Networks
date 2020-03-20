@@ -2,6 +2,11 @@ import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt 
 
+x = np.array([[1,2],[3,4]])
+
+plt.imshow(x)
+plt.show()
+
 # testImage = Image.open("test_image.png")
 # image = np.array(testImage)
 # print(image)
@@ -106,15 +111,15 @@ import matplotlib.pyplot as plt
 # ee = np.flip(arm2, (0,1))
 # print(ee)
 
-a = np.array([[1,2,3,4,5],[6,7,8,9,10],[11,12,13,14,15],[16,17,18,19,20],[21,22,23,24,25]])
-column = np.zeros((1, a.shape[0]))
-for i in range(2* a.shape[1] - 1):
-	if (i % 2 != 0):
-		a = np.hstack((a[:,:i], np.transpose(column), a[:,i:]))
-a = np.transpose(a)
-row = np.zeros((1, a.shape[0]))
-for i in range(2* a.shape[1] - 1):
-	if(i % 2 != 0):
-		a = np.hstack((a[:,:i], np.transpose(row), a[:,i:]))
-a = np.transpose(a)
-print(a)
+# a = np.array([[1,2,3,4,5],[6,7,8,9,10],[11,12,13,14,15],[16,17,18,19,20],[21,22,23,24,25]])
+# column = np.zeros((1, a.shape[0]))
+# for i in range(2* a.shape[1] - 1):
+# 	if (i % 2 != 0):
+# 		a = np.hstack((a[:,:i], np.transpose(column), a[:,i:]))
+# a = np.transpose(a)
+# row = np.zeros((1, a.shape[0]))
+# for i in range(2* a.shape[1] - 1):
+# 	if(i % 2 != 0):
+# 		a = np.hstack((a[:,:i], np.transpose(row), a[:,i:]))
+# a = np.transpose(a)
+# print(a)

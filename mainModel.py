@@ -7,7 +7,7 @@ import time
 # This is a CNN model (only batch normalization is yet to be implemented)
 
 class CNN:
-	def __init__(self, learningRate, regularizationFactor):
+	def __init__(self, learningRate, regularizationFactor, weights, biases):
 		self.learningRate = learningRate
 		self.regularizationFactor = regularizationFactor
 		self.maxPoolFilterSize = 2
@@ -19,10 +19,16 @@ class CNN:
 		self.numberOfFiltersLayer1 = 32
 		self.filterSizeLayer1 = 3
 		self.filterDepthLayer1 = 3
-		self.filtersLayer1 = np.random.randn(self.numberOfFiltersLayer1,self.filterSizeLayer1,self.filterSizeLayer1,self.filterDepthLayer1)
+		if(weights == None):
+			self.filtersLayer1 = np.random.randn(self.numberOfFiltersLayer1,self.filterSizeLayer1,self.filterSizeLayer1,self.filterDepthLayer1)
+		else:
+			self.filtersLayer1 = weights[0]
 		self.convoultionSizeLayer1 = self.FindSize(self.imageSize,1,self.filterSizeLayer1,2)
 		self.convolutionLayer1 = np.zeros((self.convoultionSizeLayer1,self.convoultionSizeLayer1,self.numberOfFiltersLayer1))
-		self.biasesLayer1 = np.random.randn(*(self.convolutionLayer1.shape))
+		if(biases == None):
+			self.biasesLayer1 = np.random.randn(*(self.convolutionLayer1.shape))
+		else:
+			self.biasesLayer1 = biases[0]
 
 		self.reluLayer1 = np.zeros(self.convolutionLayer1.shape)
 		self.maxpooledSizeLayer1 = self.FindSize(self.convolutionLayer1.shape[0],0,self.maxPoolFilterSize,self.maxPoolStride)
@@ -32,10 +38,16 @@ class CNN:
 		self.numberOfFiltersLayer2 = 128
 		self.filterSizeLayer2 = 3
 		self.filterDepthLayer2 = self.numberOfFiltersLayer1
-		self.filtersLayer2 = np.random.randn(self.numberOfFiltersLayer2,self.filterSizeLayer2,self.filterSizeLayer2,self.filterDepthLayer2)
+		if(weights == None):
+			self.filtersLayer2 = np.random.randn(self.numberOfFiltersLayer2,self.filterSizeLayer2,self.filterSizeLayer2,self.filterDepthLayer2)
+		else:
+			self.filtersLayer2 = weights[1]
 		self.convoultionSizeLayer2 = self.FindSize(self.maxpooledLayer1.shape[0],1,self.filterSizeLayer2,1)
 		self.convolutionLayer2 = np.zeros((self.convoultionSizeLayer2,self.convoultionSizeLayer2,self.numberOfFiltersLayer2))
-		self.biasesLayer2 = np.random.randn(*(self.convolutionLayer2.shape))
+		if(biases == None):
+			self.biasesLayer2 = np.random.randn(*(self.convolutionLayer2.shape))
+		else:
+			self.biasesLayer2 = biases[1]
 
 		self.reluLayer2 = np.zeros(self.convolutionLayer2.shape)
 		self.maxpooledSizeLayer2 = self.FindSize(self.convolutionLayer2.shape[0],0,self.maxPoolFilterSize,self.maxPoolStride)
@@ -43,16 +55,28 @@ class CNN:
 
 		# declarations for fully connected layer 1
 		self.heightOfFlattenedLayer = np.prod(list(self.maxpooledLayer2.shape))
-		self.weightsFCLayer1 = np.random.randn(128, self.heightOfFlattenedLayer)
+		if(weights == None):
+			self.weightsFCLayer1 = np.random.randn(128, self.heightOfFlattenedLayer)
+		else:
+			self.weightsFCLayer1 = weights[2]
 		self.fullyconnectedLayer1 = np.zeros((128,1))
-		self.biasesFCLayer1 = np.random.randn(*(self.fullyconnectedLayer1.shape))
+		if(biases == None):
+			self.biasesFCLayer1 = np.random.randn(*(self.fullyconnectedLayer1.shape))
+		else:
+			self.biasesFCLayer1 = biases[2]
 
 		self.activationFCLayer1 = np.zeros(self.fullyconnectedLayer1.shape)
 
 		# declarations for fully connected layer 2
-		self.weightsFCLayer2 = np.random.randn(2,128)
+		if(weights == None):
+			self.weightsFCLayer2 = np.random.randn(2,128)
+		else:
+			self.weightsFCLayer2 = weights[3]
 		self.fullyconnectedLayer2 = np.zeros((2,1))
-		self.biasesFCLayer2 = np.random.randn(*(self.fullyconnectedLayer2.shape))
+		if(biases == None):
+			self.biasesFCLayer2 = np.random.randn(*(self.fullyconnectedLayer2.shape))
+		else:
+			self.biasesFCLayer2 = biases[3]
 		self.softmaxFCLayer2 = np.zeros(self.fullyconnectedLayer2.shape)
 
 		# Loss
@@ -112,7 +136,7 @@ class CNN:
 			self.Loss = 0.5 * (-1 * np.log(self.epsilon + self.softmaxFCLayer2[np.where(self.category == 1)][0][0]) + (self.regularizationFactor * L2Regularization) )
 		else:
 			self.Loss = 0.5 * (-1 * np.log(self.softmaxFCLayer2[np.where(self.category == 1)][0][0]) + (self.regularizationFactor * L2Regularization) )
-		print(self.Loss)
+		# print('Loss = ' + str(self.Loss))
 
 		return self.Loss
 
@@ -208,7 +232,7 @@ class CNN:
 
 		# gradient for bias of final output layer
 		self.biasesFCLayer2G = np.zeros(self.biasesFCLayer2.shape)
-		constantForBias = np.sum(np.exp(self.fullyconnectedLayer2 - 0.999 * self.fullyconnectedLayer2))
+		constantForBias = np.sum(np.exp(self.fullyconnectedLayer2 - 0.99999 * self.fullyconnectedLayer2))
 		for  i in range(self.biasesFCLayer2.shape[0]):
 			temp = 0
 			for j in range(self.softmaxFCLayer2.shape[0]):
@@ -229,22 +253,23 @@ class CNN:
 		self.biasesLayer1G = self.tempReluLayer1G
 
 	def GradientUpdate(self):
+		# Implemented using Gradient Descent algorithm
 
 		# filters and biases layer 1
-		self.filtersLayer1 = np.subtract(self.filtersLayer1, self.learningRate * np.add(self.filtersLayer1G, self.filtersLayer1))
-		self.biasesLayer1 = np.subtract(self.biasesLayer1, self.learningRate * self.biasesLayer1G)
+		self.filtersLayer1 = self.filtersLayer1 -  (self.learningRate * (self.filtersLayer1G +  (self.regularizationFactor * self.filtersLayer1)))
+		self.biasesLayer1 = self.biasesLayer1 -  (self.learningRate * self.biasesLayer1G)
 
 		# filters and biases layer 2
-		self.filtersLayer2 = np.subtract(self.filtersLayer2, self.learningRate * np.add(self.filtersLayer2G, self.filtersLayer2))
-		self.biasesLayer2 = np.subtract(self.biasesLayer2, self.learningRate * self.biasesLayer2G)
+		self.filtersLayer2 = self.filtersLayer2 - (self.learningRate * (self.filtersLayer2G + (self.regularizationFactor * self.filtersLayer2)))
+		self.biasesLayer2 = self.biasesLayer2 -  (self.learningRate * self.biasesLayer2G)
 
 		# weights and biases FC layer 1
-		self.weightsFCLayer1 = np.subtract(self.weightsFCLayer1, self.learningRate * np.add(self.weightsFCLayer1G, self.weightsFCLayer1))
-		self.biasesFCLayer1 = np.subtract(self.biasesFCLayer1, self.learningRate * self.biasesFCLayer1G)
+		self.weightsFCLayer1 = self.weightsFCLayer1 -  (self.learningRate * (self.weightsFCLayer1G + (self.regularizationFactor * self.weightsFCLayer1)))
+		self.biasesFCLayer1 = self.biasesFCLayer1 -  (self.learningRate * self.biasesFCLayer1G)
 
 		# weights and biases FC layer 2
-		self.weightsFCLayer2 = np.subtract(self.weightsFCLayer2, self.learningRate * np.add(self.weightsFCLayer2G, self.weightsFCLayer2))
-		self.biasesFCLayer2 = np.subtract(self.biasesFCLayer2, self.learningRate * self.biasesFCLayer2G)
+		self.weightsFCLayer2 = self.weightsFCLayer2 -  (self.learningRate * (self.weightsFCLayer2G + (self.regularizationFactor * self.weightsFCLayer2)))
+		self.biasesFCLayer2 = self.biasesFCLayer2 -  (self.learningRate * self.biasesFCLayer2G)
 
 	def Dilation(self,volume, dilation):
 		sizeAfterDilation = volume.shape[0] + ((volume.shape[0] - 1) * (dilation - 1))
@@ -290,7 +315,7 @@ class CNN:
 
 	def Softmax(self, array):
 
-		constant = 0.9999 * array
+		constant = 0.99999 * array
 		temp = array - constant
 		# print(temp)
 		exponents = np.exp(temp)
@@ -416,29 +441,29 @@ class CNN:
 			print(volume[indexOf3DVolume, :, :, indexOfSlice])
 
 
-start = time.time()
+# start = time.time()
 
-testImage = Image.open("test_image.png")
-testImg = np.array(testImage) / 255.0
-img = np.zeros((testImg.shape[0]-1, testImg.shape[1]-1, testImg.shape[2]))
-classify = np.array([0,1])
+# testImage = Image.open("test_image.png")
+# testImg = np.array(testImage) / 255.0
+# img = np.zeros((testImg.shape[0]-1, testImg.shape[1]-1, testImg.shape[2]))
+# classify = np.array([0,1])
 
-# creating a 49 * 49 * 3 image to feedin CNN
-for x in range(img.shape[2]):
-	temp = np.delete(testImg[:,:,x], 0, axis=0)
-	img[:,:,x] = np.delete(temp, 0, axis=1) 
-print(img.shape)
+# # creating a 49 * 49 * 3 image to feedin CNN
+# for x in range(img.shape[2]):
+# 	temp = np.delete(testImg[:,:,x], 0, axis=0)
+# 	img[:,:,x] = np.delete(temp, 0, axis=1) 
+# print(img.shape)
 
-# classify is a dummy one hot encoded vector for the different classes of the output and only used for testing (temporary)
-cnn = CNN(0.005, 0.00001) # learning rate and regularization factor 
-cnn.SetImage(img, classify) 
-cnn.ForwardPass()
-# cnn.ShowLayer4D(cnn.filtersLayer1, 1, 1, 1)
-# cnn.ShowLayer3D(cnn.convolutionLayer1, 25, 1)
-cnn .BackwardPass()
-cnn.GradientUpdate()
+# # classify is a dummy one hot encoded vector for the different classes of the output and only used for testing (temporary)
+# cnn = CNN(0.005, 0.00001, None, None) # learning rate and regularization factor 
+# cnn.SetImage(img, classify) 
+# cnn.ForwardPass()
+# # cnn.ShowLayer4D(cnn.filtersLayer1, 1, 1, 1)
+# # cnn.ShowLayer3D(cnn.convolutionLayer1, 25, 1)
+# cnn .BackwardPass()
+# cnn.GradientUpdate()
 
-end = time.time()
-difference = end - start
-print(difference)
+# end = time.time()
+# difference = end - start
+# print(difference)
 
